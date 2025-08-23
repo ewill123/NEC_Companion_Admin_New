@@ -1,0 +1,43 @@
+/* Default (light) theme */
+:root {
+  --bg-color: #f9fbfd;
+  --text-color: #222;
+  --header-bg: #fff;
+  --button-bg: #eee;
+  /* add more variables as needed */
+}
+
+[data-theme="dark"] {
+  --bg-color: #121212;
+  --text-color: #eee;
+  --header-bg: #1f1f1f;
+  --button-bg: #333;
+  /* override variables for dark mode */
+}
+
+/* Apply variables globally */
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  margin: 0;
+  font-family: "Inter", sans-serif;
+}
+
+header {
+  background-color: var(--header-bg);
+  /* other header styles */
+}
+
+button {
+  background-color: var(--button-bg);
+  color: var(--text-color);
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
