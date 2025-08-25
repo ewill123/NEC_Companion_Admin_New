@@ -1,3 +1,5 @@
+// App.jsx
+"use client";
 import React, {
   useEffect,
   useState,
@@ -24,6 +26,9 @@ import VideoList from "./components/VideoList";
 import VideoUploader from "./components/VideoUploader";
 import { ref, deleteObject } from "firebase/storage";
 import { storage } from "./firebaseConfig";
+import HomeDashboard from "./components/HomeDashboard";
+import CallCenterPanel from "./components/CallCenterPanel";
+
 import {
   FaSun,
   FaMoon,
@@ -35,8 +40,8 @@ import {
   FaVideo,
   FaBars,
   FaSignOutAlt,
+  FaClipboardList,
 } from "react-icons/fa";
-import CallCenterPanel from "./components/CallCenterPanel";
 
 export default function App() {
   const { theme, toggleTheme } = useContext(ThemeContext);
@@ -68,7 +73,6 @@ export default function App() {
   // --- Authentication ---
   useEffect(() => {
     let isMounted = true;
-
     supabase.auth.getSession().then(({ data }) => {
       if (isMounted) setSession(data.session);
     });
@@ -93,7 +97,6 @@ export default function App() {
         .from("issues")
         .select("*")
         .order("created_at", { ascending: false });
-
       if (error) throw error;
 
       const newMap = new Map();
@@ -107,17 +110,12 @@ export default function App() {
               .from("issues")
               .update({ assigned_department: department, status: "Assigned" })
               .eq("id", report.id);
-
             if (!updateError) {
-              console.log(
-                `🧠 Auto-assigned report ${report.id} to ${department}`
-              );
               report.assigned_department = department;
               report.status = "Assigned";
             }
           }
         }
-
         if (!report.is_read) unreadCount++;
         newMap.set(report.id, report);
       }
@@ -134,7 +132,7 @@ export default function App() {
 
   useEffect(() => {
     if (!session) return;
-    setRole(getUserRole()); // refresh role whenever session changes
+    setRole(getUserRole());
   }, [session]);
 
   // --- Fetch videos ---
@@ -145,7 +143,6 @@ export default function App() {
         .from("education_videos")
         .select("*")
         .order("created_at", { ascending: false });
-
       if (error) throw error;
       setVideos(data || []);
     } catch (error) {
@@ -158,14 +155,9 @@ export default function App() {
   // --- Poll reports & load videos ---
   useEffect(() => {
     if (!session) return;
-
     fetchReports();
     if (activeTab === "videos") fetchVideos();
-
-    const interval = setInterval(() => {
-      fetchReports();
-    }, 15000);
-
+    const interval = setInterval(fetchReports, 15000);
     return () => clearInterval(interval);
   }, [session, activeTab, fetchReports, fetchVideos]);
 
@@ -193,10 +185,7 @@ export default function App() {
 
   // --- Assign report ---
   async function assignReportToDepartment(reportId, department) {
-    if (!department) {
-      toast.error("Please select a department");
-      return;
-    }
+    if (!department) return toast.error("Please select a department");
 
     setAssigning(true);
     try {
@@ -204,19 +193,17 @@ export default function App() {
         .from("issues")
         .update({ assigned_department: department, status: "Assigned" })
         .eq("id", reportId);
-
       if (error) throw error;
 
       setReportsMap((prevMap) => {
         const newMap = new Map(prevMap);
         const report = newMap.get(reportId);
-        if (report) {
+        if (report)
           newMap.set(reportId, {
             ...report,
             assigned_department: department,
             status: "Assigned",
           });
-        }
         return newMap;
       });
 
@@ -233,21 +220,18 @@ export default function App() {
   // --- Delete report ---
   async function deleteReport(report) {
     if (!window.confirm(`Delete report ID ${report.id}?`)) return;
-
     try {
       const { error } = await supabase
         .from("issues")
         .delete()
         .eq("id", report.id);
       if (error) throw error;
-
       setReportsMap((prevMap) => {
         const newMap = new Map(prevMap);
         newMap.delete(report.id);
         if (selectedReport?.id === report.id) setSelectedReport(null);
         return newMap;
       });
-
       toast.success("Report deleted");
     } catch (error) {
       toast.error("Delete failed: " + error.message);
@@ -257,21 +241,15 @@ export default function App() {
   // --- Delete video ---
   async function deleteVideo(video) {
     if (!window.confirm(`Delete video "${video.title}"?`)) return;
-
     try {
-      if (!video.firebase_path) {
-        toast.error("Missing firebase_path. Cannot delete from Firebase.");
-        return;
-      }
+      if (!video.firebase_path) return toast.error("Missing firebase_path");
       const storageRef = ref(storage, video.firebase_path);
       await deleteObject(storageRef);
-
       const { error } = await supabase
         .from("education_videos")
         .delete()
         .eq("id", video.id);
       if (error) throw error;
-
       setVideos((prev) => prev.filter((v) => v.id !== video.id));
       toast.success("Video deleted");
     } catch (err) {
@@ -294,11 +272,10 @@ export default function App() {
 
   // --- Filter and sort reports ---
   let reportsArray = Array.from(reportsMap.values());
-  if (filterDepartment) {
+  if (filterDepartment)
     reportsArray = reportsArray.filter(
       (r) => r.assigned_department === filterDepartment
     );
-  }
   if (searchTerm) {
     const lowerSearch = searchTerm.toLowerCase();
     reportsArray = reportsArray.filter(
@@ -311,7 +288,6 @@ export default function App() {
   }
   reportsArray.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-  // --- Show login if no session ---
   if (!session) {
     return (
       <Login
@@ -356,7 +332,7 @@ export default function App() {
             zIndex: 1000,
           }}
         >
-          {/* Header + toggle */}
+          {/* Sidebar header + toggle */}
           <div
             style={{
               padding: "1rem 1.5rem",
@@ -373,7 +349,6 @@ export default function App() {
                   margin: 0,
                   fontWeight: "bold",
                   fontSize: 22,
-                  userSelect: "none",
                   color: theme === "dark" ? "#fff" : "#222",
                 }}
               >
@@ -390,16 +365,13 @@ export default function App() {
                 cursor: "pointer",
                 fontSize: 22,
                 padding: 4,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
               }}
             >
               <FaBars />
             </button>
           </div>
 
-          {/* Navigation */}
+          {/* Sidebar nav */}
           <nav
             style={{
               flexGrow: 1,
@@ -413,15 +385,14 @@ export default function App() {
               onClick={toggleTheme}
               aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
               style={{
-                background: "none",
-                border: "none",
+                all: "unset",
                 cursor: "pointer",
-                fontSize: 20,
                 display: "flex",
                 alignItems: "center",
-                color: theme === "dark" ? "#f9fbfd" : "#121212",
-                transition: "color 0.3s ease",
+                gap: 12,
                 padding: "0.5rem 1.5rem",
+                fontSize: 16,
+                color: theme === "dark" ? "#f9fbfd" : "#121212",
               }}
             >
               {theme === "light" ? <FaMoon /> : <FaSun />}
@@ -432,8 +403,10 @@ export default function App() {
               )}
             </button>
 
+            {/* Nav tabs */}
             {[
               { key: "dashboard", label: "Dashboard", icon: <FaChartBar /> },
+              { key: "reports", label: "Reports", icon: <FaClipboardList /> },
               {
                 key: "election",
                 label: "Election Date",
@@ -450,7 +423,6 @@ export default function App() {
                   key={key}
                   onClick={() => setActiveTab(key)}
                   className="nav-btn"
-                  aria-current={active ? "page" : undefined}
                   style={{
                     all: "unset",
                     cursor: "pointer",
@@ -469,32 +441,26 @@ export default function App() {
                         : "#555",
                     backgroundColor: active
                       ? theme === "dark"
-                        ? "rgba(76, 175, 80, 0.15)"
-                        : "rgba(56, 142, 60, 0.15)"
+                        ? "rgba(76, 175, 80,0.15)"
+                        : "rgba(56,142,60,0.15)"
                       : "transparent",
                     borderLeft: active
                       ? `4px solid ${theme === "dark" ? "#4caf50" : "#388e3c"}`
                       : "4px solid transparent",
-                    transition: "background-color 0.25s ease, color 0.25s ease",
-                    whiteSpace: "nowrap",
-                    userSelect: "none",
                     borderRadius: "0 8px 8px 0",
+                    whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
-                    direction: sidebarOpen ? "ltr" : "rtl",
                     justifyContent: sidebarOpen ? "flex-start" : "center",
                   }}
                 >
                   <span
                     style={{
                       fontSize: 22,
-                      lineHeight: 1,
-                      flexShrink: 0,
-                      userSelect: "none",
+                      width: 28,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      width: 28,
                       color: active
                         ? theme === "dark"
                           ? "#4caf50"
@@ -534,32 +500,15 @@ export default function App() {
                 backgroundColor: "#d32f2f",
                 borderRadius: 8,
                 justifyContent: sidebarOpen ? "flex-start" : "center",
-                userSelect: "none",
-                transition: "background-color 0.25s ease",
-                boxShadow:
-                  "0 2px 4px rgba(211, 47, 47, 0.6), 0 0 6px rgba(211, 47, 47, 0.4)",
               }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.backgroundColor = "#b71c1c")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.backgroundColor = "#d32f2f")
-              }
-              aria-label="Logout"
             >
-              <FaSignOutAlt
-                style={{
-                  fontSize: 20,
-                  userSelect: "none",
-                  pointerEvents: "none",
-                }}
-              />
+              <FaSignOutAlt style={{ fontSize: 20 }} />
               {sidebarOpen && "Logout"}
             </button>
           </div>
         </aside>
 
-        {/* Main Content */}
+        {/* Main content */}
         <main
           style={{
             flexGrow: 1,
@@ -580,9 +529,24 @@ export default function App() {
             }}
           >
             <AnimatePresence mode="wait" initial={false}>
+              {/* Dashboard */}
               {activeTab === "dashboard" && (
                 <motion.div
                   key="dashboard"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  style={{ flexGrow: 1 }}
+                >
+                  <HomeDashboard reports={reportsArray} newCount={newCount} />
+                </motion.div>
+              )}
+
+              {/* Reports */}
+              {activeTab === "reports" && (
+                <motion.div
+                  key="reports"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
@@ -609,7 +573,6 @@ export default function App() {
                       deleteReport={deleteReport}
                       loading={loadingReports}
                     />
-
                     <AnimatePresence mode="wait">
                       {selectedReport ? (
                         <motion.div
@@ -624,7 +587,7 @@ export default function App() {
                             borderRadius: 8,
                             padding: 16,
                             backgroundColor:
-                              theme === "dark" ? "#282828" : "#ffffff",
+                              theme === "dark" ? "#282828" : "#fff",
                             overflowY: "auto",
                             maxHeight: "75vh",
                           }}
@@ -663,6 +626,7 @@ export default function App() {
                 </motion.div>
               )}
 
+              {/* Call Center */}
               {activeTab === "callcenter" && (
                 <motion.div
                   key="callcenter"
@@ -670,12 +634,12 @@ export default function App() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3 }}
-                  style={{ flexGrow: 1 }}
                 >
                   <CallCenterPanel />
                 </motion.div>
               )}
 
+              {/* Election */}
               {activeTab === "election" && (
                 <motion.div
                   key="election"
@@ -683,12 +647,12 @@ export default function App() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3 }}
-                  style={{ flexGrow: 1 }}
                 >
                   <ElectionDateManager />
                 </motion.div>
               )}
 
+              {/* News */}
               {activeTab === "news" && (
                 <motion.div
                   key="news"
@@ -696,12 +660,12 @@ export default function App() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3 }}
-                  style={{ flexGrow: 1 }}
                 >
                   <NewsManager />
                 </motion.div>
               )}
 
+              {/* Config */}
               {activeTab === "config" && (
                 <motion.div
                   key="config"
@@ -709,12 +673,12 @@ export default function App() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3 }}
-                  style={{ flexGrow: 1 }}
                 >
                   <AppConfigManager />
                 </motion.div>
               )}
 
+              {/* Videos */}
               {activeTab === "videos" && (
                 <motion.div
                   key="videos"
@@ -740,55 +704,6 @@ export default function App() {
             </AnimatePresence>
           </div>
         </main>
-
-        {/* Theme CSS & Responsive */}
-        <style>{`
-          html[data-theme="light"] {
-            --bg-color: #f9fbfd;
-            --text-color: #121212;
-            --header-bg: #ffffff;
-            --header-border: #eee;
-            --card-bg: #ffffff;
-          }
-
-          html[data-theme="dark"] {
-            --bg-color: #121212;
-            --text-color: #f9fbfd;
-            --header-bg: #1a1a1a;
-            --header-border: #333;
-            --card-bg: #282828;
-          }
-
-          body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            transition: background-color 0.3s ease, color 0.3s ease;
-          }
-
-          .nav-btn:hover {
-            background-color: ${theme === "dark" ? "#2a2a2a" : "#f0f0f0"};
-          }
-          .nav-btn:focus-visible {
-            outline: 2px solid ${theme === "dark" ? "#4caf50" : "#388e3c"};
-            outline-offset: 2px;
-          }
-
-          @media (max-width: 900px) {
-            .sidebar {
-              position: fixed !important;
-              height: 100% !important;
-              z-index: 10000 !important;
-              transform: translateX(-100%);
-              transition: transform 0.3s ease;
-            }
-            .sidebar.open {
-              transform: translateX(0);
-            }
-            main {
-              padding: 16px !important;
-            }
-          }
-        `}</style>
       </div>
     </>
   );

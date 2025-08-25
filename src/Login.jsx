@@ -115,7 +115,7 @@ export default function Login({ onLogin }) {
               marginBottom: 6,
             }}
           >
-            NEC Companion Admin Panel
+            Master Admin Panel
           </h1>
           <p
             style={{
@@ -124,7 +124,7 @@ export default function Login({ onLogin }) {
               fontWeight: 500,
             }}
           >
-            Manage and monitor the NEC Mobile App backend securely
+            Manage and monitor NEC Mobile App backend securely
           </p>
         </div>
 
